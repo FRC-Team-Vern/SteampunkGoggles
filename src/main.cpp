@@ -35,11 +35,13 @@ int main() {
 	// daemonMe();
 	
 	// TODO: Add NetworkTable back in
-	//NetworkTable::SetClientMode();
-	//NetworkTable::SetIPAddress("roborio-5461-frc.local");
-	//NetworkTable::Initialize();
+	NetworkTable::SetClientMode();
+	NetworkTable::SetIPAddress("roborio-5461-frc.local");
+	NetworkTable::Initialize();
 	
 	std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+	
+	std::shared_ptr<NetworkTable> table = NetworkTable::GetTable("datatable");
 	
 	cs::UsbCamera camera1 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
 	// TODO: Add other cameras back in
@@ -91,7 +93,9 @@ int main() {
 			outputStreamThreshold.PutFrame(greyScalePublish.getcvThresholdOutput());
 			outputStreamContours.PutFrame(source1);
 			
-			std::cout << "xPos: " << greyScalePublish.GetXPos() << std::endl;
+			int xPos = greyScalePublish.GetXPos();
+			std::cout << "xPos: " << xPos << std::endl;
+			table->PutNumber("gearX", xPos);
 		}
 	}
 }

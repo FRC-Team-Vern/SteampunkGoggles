@@ -8,7 +8,7 @@ namespace grip
 {
 
 	GreyScalePublish::GreyScalePublish(TargetType targetType)
-	: targetType(targetType) 
+		:targetType(targetType) 
 	{
 		switch(targetType) {
 			case kGear:
@@ -55,7 +55,7 @@ namespace grip
 		//Step CV_Threshold:
 		threshold();
 		
-		//Step dilate to remove holes
+		//Step dilate then erode to remove holes inside of contours
 		dilate_erode();
 		
 		//Step Find_Contours:
@@ -73,9 +73,10 @@ namespace grip
 		} else {
 			std::cout << "Largest contour not found:" << std::endl;
 		}
-/*
+		
+		// Eliminates big sudden jumps in data usually caused by dropped images
 		TheFinalFilter();
-*/
+
 	}
 	
 	void GreyScalePublish::threshold() {
@@ -110,7 +111,7 @@ namespace grip
 		std::vector<std::vector<cv::Point>> sorted_contours;
 
 
-		for (int i = 0; i < contours.size() && i < 2; ++i)
+		for (unsigned int i = 0; i < contours.size() && i < 2; ++i)
 		{
 			largestContours.push_back(contours.at(i));
 		}
@@ -170,8 +171,7 @@ namespace grip
 			if (area < minArea) continue;
 			if (area > maxArea) continue;
 			if (arcLength(contour, true) < minPerimeter) continue;
-			cv::convexHull(cv::Mat(contour, true), hull);
-			double solid = 100 * area / cv::contourArea(hull);
+			// cv::convexHull(cv::Mat(contour, true), hull);
 			output.push_back(contour);
 		}
 		
@@ -230,18 +230,12 @@ namespace grip
 		}
 	}
 
-	int GreyScalePublish::TheFinalFilter()
-	{
-		if (lastXPos+300 < xPos || lastXPos-300 > xPos)
-		{
-			return lastXPos;
+	void GreyScalePublish::TheFinalFilter() {
+		if (lastXPos+200 > xPos && lastXPos-200 < xPos) {
 			lastXPos = xPos;
-		}else
-		{
-			lastXPos = xPos;
-			return xPos;
+		} else {
+			xPos = lastXPos;
 		}
-
 	}
 
 } // end grip namespace

@@ -84,7 +84,7 @@ class GreyScalePublish {
 		cv::Mat cvThresholdOutput;
 		cv::Mat dilation_erode_element;
 		cv::Point center;
-		int lastXPos;
+		int lastXPos = 0;
 		int xPos;
 		std::pair<cv::Rect, cv::Rect> rectangles;
 		Contours findContoursOutput;
@@ -98,7 +98,7 @@ class GreyScalePublish {
 		void filterContours(const Contours&, Contours&);
 		void findLargestContoursByArea(Contours&, Contours&);
 		void calcXPos(int);
-		int TheFinalFilter();
+		void TheFinalFilter();
 };
 
 
