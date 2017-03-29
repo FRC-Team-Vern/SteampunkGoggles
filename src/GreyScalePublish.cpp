@@ -7,9 +7,27 @@
 namespace grip 
 {
 
-	GreyScalePublish::GreyScalePublish() 
+	GreyScalePublish::GreyScalePublish(TargetType targetType)
+	: targetType(targetType) 
 	{
-		// No op
+		switch(targetType) {
+			case kGear:
+			this->contourFilters = this->gearFilters;
+			break;
+			case kBoiler:
+			this->contourFilters = this->boilerFilters;
+			break;
+			default:
+			this->contourFilters = this->gearFilters;
+		}
+		imageXSize = 640;
+		shiftedCenter = (int) (640 * 0.5);
+		int erosion_type = cv::MORPH_RECT;
+		int erosion_size = 10;
+		dilation_erode_element = cv::getStructuringElement(erosion_type, 
+			cv::Size( 2*erosion_size + 1, 2*erosion_size + 1),
+			cv::Point( erosion_size, erosion_size)
+		);
 	}
 	/**
 	 * Runs an iteration of the Pipeline and updates outputs.
@@ -17,8 +35,9 @@ namespace grip
 	 * Sources need to be set before calling this method. 
 	 *
 	 */
-	void GreyScalePublish::process(cv::Mat source0)
+	void GreyScalePublish::process(cv::Mat& source0)
 	{
+		this->source0 = source0;
 		//Step extract color channels:
 		int cvBlueChannel = 0;
 		cv::extractChannel(source0, this->cvExtractBlueOutput, cvBlueChannel);
@@ -28,45 +47,44 @@ namespace grip
 		cv::extractChannel(source0, this->cvExtractRedOutput, cvRedChannel);
 		
 		//Step CV_scaleAdd Green and Blue:
-		double cvScaleaddBlueScale = -0.1;
 		cv::scaleAdd(cvExtractBlueOutput, cvScaleaddBlueScale, cvExtractGreenOutput, this->cvScaleadd0Output);
 		
 		//Step CV_scale Green and Red:
-		double cvScaleaddRedScale = -1.0;
 		cv::scaleAdd(cvExtractRedOutput, cvScaleaddRedScale, cvScaleadd0Output, this->cvScaleadd1Output);
 		
 		//Step CV_Threshold:
-		double cvThresholdThresh = 128.0;  // default Double
-		double cvThresholdMaxval = 255.0;  // default Double
-		int cvThresholdType = cv::THRESH_BINARY;
-		cv::threshold(cvScaleadd1Output, this->cvThresholdOutput, cvThresholdThresh, cvThresholdMaxval, cvThresholdType);
-					
+		threshold();
+		
+		//Step dilate to remove holes
+		dilate_erode();
+		
 		//Step Find_Contours:
-		bool findContoursExternalOnly = false;  // default Boolean
-		findContours(cvThresholdOutput, findContoursExternalOnly, this->findContoursOutput);
-		
+		findContours(cvThresholdOutput, this->findContoursOutput);
+		OverlayContours(source0, findContoursOutput);
+				
 		filterContours(findContoursOutput, this->filterContoursOutput);
-		
-		//Step find largest contour by area
-		std::vector<std::vector<cv::Point>> largestContours = findLargestAreas(this->filterContoursOutput);
-		if (!largestContours.empty()) 
-		{
+		OverlayContours(source0, filterContoursOutput, cv::Scalar(0, 255, 0));
+	
+		//Step find largest contours by area
+		GreyScalePublish::Contours largestContours;
+		findLargestContoursByArea(this->filterContoursOutput, largestContours);
+		if (!largestContours.empty()) {
 			findAndDrawCirclesAndRects(source0, largestContours);
-		} else 
-		{
+		} else {
 			std::cout << "Largest contour not found:" << std::endl;
 		}
-		OverlayContours(source0, filterContoursOutput);
-		theFinalFilter();
+/*
+		TheFinalFilter();
+*/
 	}
 	
-	/**
-	 * This method is a generated getter for the output of a Filter_Contours.
-	 * @return ContoursReport output from Filter_Contours.
-	 */
-	std::vector<std::vector<cv::Point> >* GreyScalePublish::getfilterContoursOutput()
-	{
-		return &(this->filterContoursOutput);
+	void GreyScalePublish::threshold() {
+		cv::threshold(cvScaleadd1Output, cvThresholdOutput, cvThresholdThresh, cvThresholdMaxval, cvThresholdType);
+	}
+	
+	void GreyScalePublish::dilate_erode() {
+		cv::dilate(cvThresholdOutput, cvThresholdOutput, dilation_erode_element);
+		cv::erode(cvThresholdOutput, cvThresholdOutput, dilation_erode_element);
 	}
 
 	/**
@@ -76,20 +94,17 @@ namespace grip
 	 * @param externalOnly if only external contours are to be found.
 	 * @param contours vector of contours to put contours in.
 	 */
-	void GreyScalePublish::findContours(cv::Mat &input, bool externalOnly, std::vector<std::vector<cv::Point> > &contours)
+	void GreyScalePublish::findContours(cv::Mat &input, Contours& contours)
 	{
 		std::vector<cv::Vec4i> hierarchy;
 		contours.clear();
-		int mode = externalOnly ? cv::RETR_EXTERNAL : cv::RETR_LIST;
+		int mode = findContoursExternalOnly ? cv::RETR_EXTERNAL : cv::RETR_LIST;
 		int method = cv::CHAIN_APPROX_SIMPLE;
 		cv::findContours(input, contours, hierarchy, mode, method);
-
 	}
 
-	std::vector<std::vector<cv::Point>> GreyScalePublish::findLargestAreas(std::vector<std::vector<cv::Point> > &contours)
-	{
-		std::vector<std::vector<cv::Point> > largestContours;
-
+	void GreyScalePublish::findLargestContoursByArea(Contours& contours, Contours& largestContours) {
+		
 		std::sort(contours.begin(), contours.end(), [](auto& x,auto& y)->bool{return cv::contourArea(x) > cv::contourArea(y);});
 
 		std::vector<std::vector<cv::Point>> sorted_contours;
@@ -98,8 +113,6 @@ namespace grip
 		for (int i = 0; i < contours.size() && i < 2; ++i)
 		{
 			largestContours.push_back(contours.at(i));
-			//rectangles.first = rectangles.second;
-			//rectangles.second = cv::boundingRect(largestContours);
 		}
 
 		std::cout << "Largest areas: " << std::endl;
@@ -107,12 +120,11 @@ namespace grip
 		{
 			std::cout << cv::contourArea(contour) << std::endl;
 		}
-		return largestContours;
 	}
 
-	void GreyScalePublish::OverlayContours(cv::Mat &input, std::vector<std::vector<cv::Point> > &contours)
+	void GreyScalePublish::OverlayContours(cv::Mat &input, Contours& contours, cv::Scalar color)
 	{
-		cv::drawContours(input, contours, -1, cv::Scalar(0,0,255), 3);
+		cv::drawContours(input, contours, -1, color, 3);
 	}
 
 	/**
@@ -121,24 +133,39 @@ namespace grip
 	 * @param contoursFilter contains parameters of contours that will be kept.
 	 * @param output vector of filtered contours.
 	 */
-	void GreyScalePublish::filterContours(std::vector<std::vector<cv::Point> > &inputContours, std::vector<std::vector<cv::Point> > &output) 
+	void GreyScalePublish::filterContours(const Contours& inputContours, Contours& output) 
 	{
-		double minArea = gearFilters.minArea;
-		double maxArea = gearFilters.maxArea;
-		double minPerimeter = gearFilters.minPerimeter;
-		double minWidth = gearFilters.minWidth;
-		double minHeight = gearFilters.minHeight;
-		double maxHeight = gearFilters.maxHeight;
-		double maxWidth = gearFilters.maxWidth;
+		double minArea = contourFilters.minArea;
+		double maxArea = contourFilters.maxArea;
+		double minPerimeter = contourFilters.minPerimeter;
+		double minWidth = contourFilters.minWidth;
+		double minHeight = contourFilters.minHeight;
+		double maxHeight = contourFilters.maxHeight;
+		double maxWidth = contourFilters.maxWidth;
+		
 		std::vector<cv::Point> hull;
 		output.clear();
-		for (std::vector<cv::Point> contour: inputContours)
+		
+		for (const std::vector<cv::Point>& contour: inputContours)
 		{
 			cv::Rect bb = boundingRect(contour);
-			if (bb.width < minWidth) continue;
-			if (bb.height < minHeight) continue;
-			if (bb.height > maxHeight) continue;
-			if (bb.width > maxWidth) continue;
+			std::cout << "Current bb: " << bb << std::endl;
+			if (bb.width < minWidth) {
+				 std::cout << "Rejected at minWidth: " << minWidth << std::endl;
+				 continue;
+			}	 
+			if (bb.height < minHeight) {
+				 std::cout << "Rejected at minHeight: " << minHeight << std::endl;
+				 continue;
+			}
+			if (bb.height > maxHeight) {
+				 std::cout << "Rejected at maxHeight: " << maxHeight << std::endl;
+				 continue;
+			}
+			if (bb.width > maxWidth) {
+				 std::cout << "Rejected at maxWidth: " << maxWidth << std::endl;
+				 continue;
+			}
 			double area = cv::contourArea(contour);
 			if (area < minArea) continue;
 			if (area > maxArea) continue;
@@ -147,35 +174,44 @@ namespace grip
 			double solid = 100 * area / cv::contourArea(hull);
 			output.push_back(contour);
 		}
+		
+		if (output.empty()) {
+			std::cout << "No contours remaining: " << std::endl;
+		} else {
+			std::cout << "Contours found!" << std::endl;	
+		}
+	}
+	
+	void GreyScalePublish::calcXPos(int centerPoint) {
+			xPos = centerPoint - shiftedCenter;
 	}
 
-	void GreyScalePublish::findAndDrawCirclesAndRects(cv::Mat &src, std::vector<std::vector<cv::Point>> &contours)
-	{
+	void GreyScalePublish::findAndDrawCirclesAndRects(cv::Mat& src, Contours& contours) {
+
 		twoLargestRectTl2Br = std::make_pair(cv::Rect(0,0,0,0),cv::Rect(0,0,0,0));
-		for (std::vector<cv::Point>& contour : contours) 
-		{
-			cv::Point2f center;
-			float radius;
-			cv::minEnclosingCircle( (cv::Mat)contour, center, radius );
-			cv::Scalar red = cv::Scalar(0,0,255);
+		
+		for (std::vector<cv::Point>& contour : contours) {
+			//cv::Point2f center;
+			//float radius;
+			// cv::minEnclosingCircle( (cv::Mat)contour, center, radius );
+			
 			cv::Rect bb = cv::boundingRect( cv::Mat(contour));
-			cv::rectangle(src, bb.tl(), bb.br(), red,5);
-			cv::circle( src, center, (int)radius, red, 5);
-			if(twoLargestRectTl2Br.first.tl().x > 0)
-			{
+			cv::rectangle(src, bb.tl(), bb.br(), Blue, 2);
+			// cv::circle( src, center, (int)radius, Blue, 2);
+			
+			if(twoLargestRectTl2Br.first.tl().x > 0) {
 				twoLargestRectTl2Br.second = bb;
-			}else
-			{
+			} else {
 				twoLargestRectTl2Br.first = bb;
 			}
 
 		}
-		if(contours.size() > 1)
-		{
+		
+		if(contours.size() > 1) {
 			std::cout<<"first Rect: "<<twoLargestRectTl2Br.first<<std::endl;
 			std::cout<<"second Rect: "<<twoLargestRectTl2Br.second<<std::endl;
-			if (twoLargestRectTl2Br.first.tl().x > twoLargestRectTl2Br.second.tl().x)
-			{
+			
+			if (twoLargestRectTl2Br.first.tl().x > twoLargestRectTl2Br.second.tl().x) {
 				const cv::Rect secondRect = twoLargestRectTl2Br.second;
 				const cv::Rect firstRect = twoLargestRectTl2Br.first;
 				twoLargestRectTl2Br = std::make_pair(secondRect, firstRect);
@@ -188,12 +224,13 @@ namespace grip
 			std::cout<<"center:"<<center<<std::endl;
 			const int radius = ((Br.x - Tl.x)*.5);
 			std::cout<<"radius:"<<radius<<std::endl;
-			cv::rectangle(src, Tl, Br, cv::Scalar(0,0,255), 5);
-			cv::circle(src, center, radius, cv::Scalar(0,0,255), 5);
+			cv::rectangle(src, Tl, Br, Red, 2);
+			cv::circle(src, center, radius, Red, 2);
+			calcXPos(center.x);
 		}
 	}
 
-	int GreyScalePublish::theFinalFilter()
+	int GreyScalePublish::TheFinalFilter()
 	{
 		if (lastXPos+300 < xPos || lastXPos-300 > xPos)
 		{
