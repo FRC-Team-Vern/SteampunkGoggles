@@ -36,14 +36,17 @@ class GreyScalePublish {
 		std::pair<cv::Rect, cv::Rect> twoLargestRectTl2Br;
 		
 		struct ContourFilters {
-			double minArea = 100.0;
-			double maxArea = 50000.0;
-			double minPerimeter = 50.0;
-			double minWidth = 40.0;
-			double minHeight = 90.0;
-			double maxHeight = 1500.0;
-			double maxWidth = 200.0;
-		} contourFilters;
+			double minArea;
+			double maxArea;
+			double minPerimeter;
+			double minWidth;
+			double minHeight;
+			double maxHeight;
+			double maxWidth;
+		};
+		
+		struct ContourFilters gearFilters = {100.0, 50000.0, 50.0, 40.0, 90.0, 1500.0, 200.0};
+		struct ContourFilters boilerFilters = {100.0, 50000.0, 50.0, 40.0, 90.0, 1500.0, 200.0};
 
 	public:
 		GreyScalePublish();
@@ -60,7 +63,7 @@ class GreyScalePublish {
 		int theFinalFilter();
 		void OverlayContours(cv::Mat &, std::vector<std::vector<cv::Point> > &);
 		std::vector<std::vector<cv::Point> >* getfilterContoursOutput();
-		void filterContours(std::vector<std::vector<cv::Point> > &, ContourFilters, std::vector<std::vector<cv::Point> > &);
+		void filterContours(std::vector<std::vector<cv::Point> > &, std::vector<std::vector<cv::Point> > &);
 		//void filterContours(std::vector<std::vector<cv::Point> > &inputContours, double, double, double, double, double, double, double, std::vector<std::vector<cv::Point> > &output);
 };
 

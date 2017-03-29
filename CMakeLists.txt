@@ -31,6 +31,7 @@ include_directories (
 	
 set (INCLUDE_SRC src/CameraServerCustom.cpp)
 set (INCLUDE_SRC ${INCLUDE_SRC} src/GreyScalePublish.cpp)
+set (INCLUDE_SRC ${INCLUDE_SRC} src/ShowManyImages.cpp)
 
 add_executable (streampunk_goggles src/main.cpp ${INCLUDE_SRC})
 

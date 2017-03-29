@@ -45,17 +45,8 @@ namespace grip
 		bool findContoursExternalOnly = false;  // default Boolean
 		findContours(cvThresholdOutput, findContoursExternalOnly, this->findContoursOutput);
 		
-		//Step Filter_Contours:
-		contourFilters.minArea = 100.0;
-		contourFilters.maxArea = 50000.0;
-		contourFilters.minPerimeter = 50.0;
-		contourFilters.minWidth = 40.0;
-		contourFilters.minHeight = 90.0;
-		contourFilters.maxHeight = 1500.0;
-		contourFilters.maxWidth = 200.0;
+		filterContours(findContoursOutput, this->filterContoursOutput);
 		
-		filterContours(findContoursOutput, contourFilters, this->filterContoursOutput);
-#if 0
 		//Step find largest contour by area
 		std::vector<std::vector<cv::Point>> largestContours = findLargestAreas(this->filterContoursOutput);
 		if (!largestContours.empty()) 
@@ -67,7 +58,6 @@ namespace grip
 		}
 		OverlayContours(source0, filterContoursOutput);
 		theFinalFilter();
-#endif
 	}
 	
 	/**
@@ -131,15 +121,15 @@ namespace grip
 	 * @param contoursFilter contains parameters of contours that will be kept.
 	 * @param output vector of filtered contours.
 	 */
-	void GreyScalePublish::filterContours(std::vector<std::vector<cv::Point> > &inputContours, ContourFilters contourFilters, std::vector<std::vector<cv::Point> > &output) 
+	void GreyScalePublish::filterContours(std::vector<std::vector<cv::Point> > &inputContours, std::vector<std::vector<cv::Point> > &output) 
 	{
-		double minArea = contourFilters.minArea;
-		double maxArea = contourFilters.maxArea;
-		double minPerimeter = contourFilters.minPerimeter;
-		double minWidth = contourFilters.minWidth;
-		double minHeight = contourFilters.minHeight;
-		double maxHeight = contourFilters.maxHeight;
-		double maxWidth = contourFilters.maxWidth;
+		double minArea = gearFilters.minArea;
+		double maxArea = gearFilters.maxArea;
+		double minPerimeter = gearFilters.minPerimeter;
+		double minWidth = gearFilters.minWidth;
+		double minHeight = gearFilters.minHeight;
+		double maxHeight = gearFilters.maxHeight;
+		double maxWidth = gearFilters.maxWidth;
 		std::vector<cv::Point> hull;
 		output.clear();
 		for (std::vector<cv::Point> contour: inputContours)
