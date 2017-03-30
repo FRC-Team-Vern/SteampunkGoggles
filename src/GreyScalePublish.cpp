@@ -231,10 +231,14 @@ namespace grip
 	}
 
 	void GreyScalePublish::TheFinalFilter() {
-		if (lastXPos+200 > xPos && lastXPos-200 < xPos) {
-			lastXPos = xPos;
+		if (initXPos) {
+			initXPos = false;
 		} else {
-			xPos = lastXPos;
+			if (lastXPos+200 > xPos && lastXPos-200 < xPos) {
+				lastXPos = xPos;
+			} else {
+				xPos = lastXPos;
+			}
 		}
 	}
 

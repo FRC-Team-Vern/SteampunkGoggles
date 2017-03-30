@@ -7,52 +7,25 @@
 
 
 void ShowThreeImagesInOne(const std::vector<cv::Mat>& images, cv::Mat& output) {
-
-	//cv::Mat DispImage;
-
-	int i;
-	int m, n;
-	int x, y;
-
-	// w - Maximum number of images in a row 
-	// h - Maximum number of images in a column 
-	int w, h;
-	cv::Size firstImageSize = images.at(0).size();
-
-	// scale - How much we have to resize the image
-	float scale;
-	int max;
-
-	// Create a new 3 channel image
-
-	// Find the width and height of the image
-	// x = img->width;
-	// y = img->height;
-
-	// Find whether height or width is greater in order to resize the image
-	// max = (x > y)? x: y;
-
-	// Find the scaling factor to resize the image
-	//scale = (float) ( (float) max / size );
-
-	// Used to Align the images
-	//if( i % w == 0 && m!= 20) {
-	//	m = 20;
-	//	n+= 20 + size;
-	//}
+	
+	// Resize images
+	cv::Size resizedImage0Size(740, 555);
+	cv::Mat resizedImage0(resizedImage0Size, CV_8UC3);
+	cv::Size resizedImage1_2Size(540, 405);
+	cv::Mat resizedImage1(resizedImage1_2Size, CV_8UC3);
+	cv::Mat resizedImage2(resizedImage1_2Size, CV_8UC3);
+	
+	cv::resize(images.at(0), resizedImage0, resizedImage0Size);
+	cv::resize(images.at(1), resizedImage1, resizedImage1_2Size);
+	cv::resize(images.at(2), resizedImage2, resizedImage1_2Size);
 	
 	// Set the image ROI to display the current image
-	cv::Mat ImageROI0(output, cvRect(320, 0, firstImageSize.width, firstImageSize.height));
-	cv::Mat ImageROI1(output, cvRect(0, 480, firstImageSize.width, firstImageSize.height));
-	cv::Mat ImageROI2(output, cvRect(640, 480, firstImageSize.width, firstImageSize.height));
+	cv::Mat ImageROI0 = output(cv::Rect(270, 0, resizedImage0Size.width, resizedImage0Size.height));
+	cv::Mat ImageROI1 = output(cv::Rect(0, 555, resizedImage1_2Size.width, resizedImage1_2Size.height));
+	cv::Mat ImageROI2 = output(cv::Rect(740, 555, resizedImage1_2Size.width, resizedImage1_2Size.height));
 	
-	images.at(0).copyTo(ImageROI0);
-	images.at(1).copyTo(ImageROI1);
-	images.at(2).copyTo(ImageROI2);
+	resizedImage0.copyTo(ImageROI0);
+	resizedImage1.copyTo(ImageROI1);
+	resizedImage2.copyTo(ImageROI2);
 	
-	// Resize the input image and copy the it to the Single Big Image
-	// cvResize(img, DispImage);
-
-	// Reset the ROI in order to display the next image
-	// cvResetImageROI(DispImage);
 }

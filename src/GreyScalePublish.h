@@ -84,6 +84,7 @@ class GreyScalePublish {
 		cv::Mat cvThresholdOutput;
 		cv::Mat dilation_erode_element;
 		cv::Point center;
+		bool initXPos = true;
 		int lastXPos = 0;
 		int xPos;
 		std::pair<cv::Rect, cv::Rect> rectangles;

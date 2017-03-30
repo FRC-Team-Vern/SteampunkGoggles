@@ -31,10 +31,9 @@
 void daemonMe();
 
 int main() {
-	// TODO: Re-daemonize me
-	// daemonMe();
+	daemonMe();
 	
-	// TODO: Add NetworkTable back in
+	// Connect to NetworkTables on roboRio
 	NetworkTable::SetClientMode();
 	NetworkTable::SetIPAddress("roborio-5461-frc.local");
 	NetworkTable::Initialize();
@@ -44,58 +43,59 @@ int main() {
 	std::shared_ptr<NetworkTable> table = NetworkTable::GetTable("datatable");
 	
 	cs::UsbCamera camera1 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
-	// TODO: Add other cameras back in
-	//cs::UsbCamera camera2 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
-	//cs::UsbCamera camera3 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
+	cs::UsbCamera camera2 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
+	cs::UsbCamera camera3 = frc::CameraServerCustom::GetInstance()->StartAutomaticCapture();
 	camera1.SetResolution(640, 480);
-	//camera2.SetResolution(640, 480);
-	//camera3.SetResolution(640, 480);
+	camera2.SetResolution(640, 480);
+	camera3.SetResolution(640, 480);
 	cs::CvSink cvSink1 = frc::CameraServerCustom::GetInstance()->GetVideo(camera1); // 1181
-	//cs::CvSink cvSink2 = frc::CameraServerCustom::GetInstance()->GetVideo(camera2);
-	//cs::CvSink cvSink3 = frc::CameraServerCustom::GetInstance()->GetVideo(camera3);
-	cs::CvSource outputStreamGreen = frc::CameraServerCustom::GetInstance()->PutVideo("Green", 640, 480); // 1182
-	cs::CvSource outputStreamBlue = frc::CameraServerCustom::GetInstance()->PutVideo("Blue", 640, 480); // 1183
-	cs::CvSource outputStreamRed = frc::CameraServerCustom::GetInstance()->PutVideo("Red", 640, 480); // 1184
-	cs::CvSource outputStreamScaled = frc::CameraServerCustom::GetInstance()->PutVideo("Scaled Filter", 640, 480); // 1185
-	cs::CvSource outputStreamThreshold = frc::CameraServerCustom::GetInstance()->PutVideo("Threshold Output", 640, 480); // 1186
-	cs::CvSource outputStreamContours = frc::CameraServerCustom::GetInstance()->PutVideo("Contours Output", 640, 480); // 1187
-	//cs::CvSource outputSteamCombined = frc::CameraServerCustom::GetInstance()->PutVideo("Combined", 1280, 960);
+	cs::CvSink cvSink2 = frc::CameraServerCustom::GetInstance()->GetVideo(camera2); // 1182
+	cs::CvSink cvSink3 = frc::CameraServerCustom::GetInstance()->GetVideo(camera3); // 1183
+	
+	// Filters
+	//cs::CvSource outputStreamGreen = frc::CameraServerCustom::GetInstance()->PutVideo("Green", 640, 480);
+	//cs::CvSource outputStreamBlue = frc::CameraServerCustom::GetInstance()->PutVideo("Blue", 640, 480);
+	//cs::CvSource outputStreamRed = frc::CameraServerCustom::GetInstance()->PutVideo("Red", 640, 480); 
+	//cs::CvSource outputStreamScaled = frc::CameraServerCustom::GetInstance()->PutVideo("Scaled Filter", 640, 480);
+	//cs::CvSource outputStreamThreshold = frc::CameraServerCustom::GetInstance()->PutVideo("Threshold Output", 640, 480); 
+	cs::CvSource outputStreamContours = frc::CameraServerCustom::GetInstance()->PutVideo("Contours Output", 640, 480); // 1184
+	cs::CvSource outputSteamCombined = frc::CameraServerCustom::GetInstance()->PutVideo("Combined", 1280, 960); // 1185
+	
 	cv::Mat source1;
-	//cv::Mat source2;
-	//cv::Mat source3;
-	//cv::Mat finalOutput(cv::Size(2*640, 2*480), CV_8UC3);
-	//std::vector<cv::Mat> sourceVec;
+	cv::Mat source2;
+	cv::Mat source3;
+	cv::Mat finalOutput(cv::Size(2*640, 2*480), CV_8UC3);
+	std::vector<cv::Mat> sourceVec;
 	
-	grip::GreyScalePublish greyScalePublish(grip::GreyScalePublish::TargetType::kGear);
-	
-	std::cout << "Target type: " << greyScalePublish.getTargetType() << std::endl;
+	grip::GreyScalePublish gearMe(grip::GreyScalePublish::TargetType::kGear);
 	
 	while (true) {
 		cvSink1.GrabFrame(source1);
-		//cvSink2.GrabFrame(source2);
-		//cvSink3.GrabFrame(source3);
+		cvSink2.GrabFrame(source2);
+		cvSink3.GrabFrame(source3);
 		
-		/*
+		// Find Gear contours in source1
+		if (!source1.empty()) {			
+			gearMe.process(source1);
+							
+			//outputStreamGreen.PutFrame(gearMe.getcvExtractGreenOutput());
+			//outputStreamBlue.PutFrame(gearMe.getcvExtractBlueOutput());
+			//outputStreamRed.PutFrame(gearMe.getcvExtractRedOutput());
+			
+			//outputStreamScaled.PutFrame(gearMe.getcvScaleadd1Output());
+			//outputStreamThreshold.PutFrame(gearMe.getcvThresholdOutput());
+			outputStreamContours.PutFrame(source1);
+			
+			int xPos = gearMe.GetXPos();
+			std::cout << "Gear xPos: " << xPos << std::endl;
+			table->PutNumber("gearX", xPos);
+		}
+		
+		// Combine all images into one and ship
 		if (!source1.empty() && !source2.empty() && !source3.empty()) {
 			sourceVec = {source1, source2, source3};
 			ShowThreeImagesInOne(sourceVec, finalOutput);
 			outputSteamCombined.PutFrame(finalOutput);
-		}
-		*/
-		if (!source1.empty()) {			
-			greyScalePublish.process(source1);
-							
-			outputStreamGreen.PutFrame(greyScalePublish.getcvExtractGreenOutput());
-			outputStreamBlue.PutFrame(greyScalePublish.getcvExtractBlueOutput());
-			outputStreamRed.PutFrame(greyScalePublish.getcvExtractRedOutput());
-			
-			outputStreamScaled.PutFrame(greyScalePublish.getcvScaleadd1Output());
-			outputStreamThreshold.PutFrame(greyScalePublish.getcvThresholdOutput());
-			outputStreamContours.PutFrame(source1);
-			
-			int xPos = greyScalePublish.GetXPos();
-			std::cout << "xPos: " << xPos << std::endl;
-			table->PutNumber("gearX", xPos);
 		}
 	}
 }
